@@ -1,0 +1,6 @@
+#idserver static_power, performance (#number of unit of work per time step at minimum frequency), frequencies, local_power_cap
+0 20 1 (1 1.5 2 3) 100 
+1 50 1 (1 1.5 2 3) 100 
+2 50 1 (1 2 3) 150 
+3 40 2 (1 3) 200
+
