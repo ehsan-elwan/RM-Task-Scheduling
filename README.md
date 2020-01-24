@@ -27,6 +27,7 @@ dependency_file = dependencies.txt
 power_cap = 1000
 energy_cap = 100000
 repeat = 2
+frequency = 1
 max_timesteps = 150
 ```
 
