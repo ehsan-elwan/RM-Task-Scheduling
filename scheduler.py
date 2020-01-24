@@ -155,8 +155,6 @@ class Scheduling:
         for server in self.servers:
             if server.available and (task.power + server.static_power) <= server.local_power_cap:
                 return server
-
-        print("cant find server for task:", task.tid)
         return None
 
     def __set_critical_time(self, task):
