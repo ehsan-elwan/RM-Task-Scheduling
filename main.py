@@ -8,10 +8,12 @@ data = Parser(parameters)
 max_time = int(parameters['max_timesteps'])
 # Global power capacity available
 power_cap = int(parameters['power_cap'])
+# Selected frequency 1,2 or 3:
+frq = int(parameters['frequency'])
 # initializing scheduler for each algorithm
-wave_front = WaveFront(tasks=deepcopy(data.tasks), servers=deepcopy(data.servers), power_cap=power_cap)
-fifo = FIFO(tasks=deepcopy(data.tasks), servers=deepcopy(data.servers), power_cap=power_cap)
-cpm = CPM(tasks=deepcopy(data.tasks), servers=deepcopy(data.servers), power_cap=power_cap)
+wave_front = WaveFront(tasks=deepcopy(data.tasks), servers=deepcopy(data.servers), power_cap=power_cap, frequency=frq)
+fifo = FIFO(tasks=deepcopy(data.tasks), servers=deepcopy(data.servers), power_cap=power_cap, frequency=frq)
+cpm = CPM(tasks=deepcopy(data.tasks), servers=deepcopy(data.servers), power_cap=power_cap, frequency=frq)
 # Build scheduling tables
 wave_front.build_wavefront_table(max_time=max_time)
 fifo.build_fifo_table()
