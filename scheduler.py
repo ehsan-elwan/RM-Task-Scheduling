@@ -140,12 +140,14 @@ class Scheduling:
               Power_cap -> global power capacity for the system
     """
 
-    def __init__(self, tasks, servers, power_cap):
+    def __init__(self, tasks, servers, power_cap, frequency):
         self.tasks = tasks  # List of tasks
         self.task_dict = {t.tid: t for t in tasks}
         self.servers = servers
         self.power_cap = power_cap  # Global power capacity
+        self.frequency = frequency - 1  # Selected frequency from 1 to 3
         self.current_time = 0
+        self.energy = 0
         self.output = []
         self.__set_critical_time(tasks[0])
 
@@ -180,6 +182,25 @@ class Scheduling:
                     for task_id in tmp:
                         self.task_dict[task_id].predecessor.remove(server.current_task.tid)
                     server.current_task = None
+
+    def __check_missed_deadline(self, task, server_perf):
+        if (self.current_time + (task.unit_of_work / server_perf)) > task.deadline:
+            print("!!! Task", task.tid, "has missed its deadline by",
+                  (self.current_time + task.unit_of_work / server_perf) - (task.deadline + task.arrival_date), "!!!")
+
+    def assign_task2server(self, server, task):
+        self.output.append([task.tid, server.server_id, self.current_time,
+                            self.current_time + task.unit_of_work / server.performance])
+        print("Task", task.tid, "assigned to server", server.server_id, "start at:", self.current_time,
+              "end at:",
+              self.current_time + task.unit_of_work / server.performance)
+        self.__check_missed_deadline(task, server.performance)
+        task.running = True
+        task.server_id = server.server_id
+        server.available = False
+        server.available_after = task.unit_of_work / server.performance
+        server.current_task = task
+        self.energy += server.static_power + (task.power / 20) * server.frequency[self.frequency] ** 3
 
     def write_results(self):
         tmp = "results.txt".split('.')
@@ -228,17 +249,7 @@ class WaveFront(Scheduling):
             for task in ready_tasks:
                 server = super().get_available_server(task)
                 if server is not None:
-                    self.output.append([task.tid, server.server_id, self.current_time,
-                                        self.current_time + task.unit_of_work / server.performance])
-                    print("Task", task.tid, "assigned to server", server.server_id, "start at:", self.current_time,
-                          "end at:",
-                          self.current_time + task.unit_of_work / server.performance)
-                    self.__check_missed_deadline(task, server.performance)
-                    task.running = True
-                    task.server_id = server.server_id
-                    server.available = False
-                    server.available_after = task.unit_of_work / server.performance
-                    server.current_task = task
+                    super().assign_task2server(server, task)
                     treated_tasks.append(task)
                     if task.repeat > 0:
                         task_repeat = deepcopy(task)
@@ -260,8 +271,7 @@ class WaveFront(Scheduling):
                 ready_tasks.remove(t)
             treated_tasks = []
             ready_tasks = self.__get_ready_tasks(ready_tasks)
-
-        print("current_time at end", self.current_time)
+        print("Total energy:", self.energy, "Watt")
         self.write_results()
         plot(input_data=self.output, label="WaveFront scheduling on multiple servers")
 
@@ -319,16 +329,7 @@ class FIFO(Scheduling):
                 # print("Time:", self.current_time, "Current task:", task.tid)
                 server = super().get_available_server(task)
                 if server is not None:
-                    self.output.append([task.tid, server.server_id, self.current_time,
-                                        self.current_time + task.unit_of_work / server.performance])
-                    print("Task", task.tid, "assigned to server", server.server_id, "start at:", self.current_time,
-                          "end at:",
-                          self.current_time + task.unit_of_work / server.performance)
-                    task.running = True
-                    task.server_id = server.server_id
-                    server.available = False
-                    server.available_after = task.unit_of_work / server.performance
-                    server.current_task = task
+                    super().assign_task2server(server, task)
                     if task.repeat > 0:
                         task_repeat = deepcopy(task)
                         task_repeat.repeat -= 1
@@ -344,8 +345,7 @@ class FIFO(Scheduling):
                 self.tasks.insert(0, task)
                 self.current_time += 1
                 super().update_servers()
-
-        print("current_time at end", self.current_time)
+        print("Total energy:", self.energy, "Watt")
         self.write_results()
         plot(input_data=self.output, label="FIFO scheduling on multiple servers")
 
@@ -412,11 +412,13 @@ class CPM(Scheduling):
                       "end at:",
                       time + task.unit_of_work / server.performance)
                 time += (task.unit_of_work / server.performance)
-                for succ in task.successor:
-                    t = self.task_dict[succ]
+                self.energy += server.static_power + (task.power / 20) * server.frequency[self.frequency] ** 3
+                for successor in task.successor:
+                    t = self.task_dict[successor]
                     t.arrival_date = max(t.arrival_date, time)
                 server.available_after = time
                 server.available = False
+        print("Total energy:", self.energy, "Watt")
         self.write_results()
         plot(input_data=self.output,
              label="CPM scheduling on multiple servers \n Critical paths: " + str(critical_paths))
